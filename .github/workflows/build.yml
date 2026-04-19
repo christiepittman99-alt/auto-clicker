@@ -1,0 +1,58 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Create local.properties
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Check project structure
+        run: |
+          echo "--- root files ---"
+          ls -la
+          echo "--- gradlew head ---"
+          head -3 gradlew
+          echo "--- settings.gradle ---"
+          cat settings.gradle
+          echo "--- local.properties ---"
+          cat local.properties
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace --info 2>&1 | tee build.log
+        continue-on-error: true
+
+      - name: Show build log tail
+        run: tail -50 build.log
+
+      - name: Find APK
+        run: find . -name "*.apk" || echo "NO APK FOUND"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AutoClicker-debug
+          path: "**/app-debug.apk"
+          if-no-files-found: error
